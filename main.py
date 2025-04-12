@@ -4,6 +4,7 @@ import datetime
 import pandas as pd
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
+from streamlit_option_menu import option_menu  # Import option_menu
 
 # Import configuration and utility functions
 import config
@@ -45,7 +46,7 @@ if isinstance(current_core_temp, (int, float)):
         st.session_state.core_temp_history = st.session_state.core_temp_history.tail(config.MAX_HISTORY_POINTS)
 # Add update logic for other history data here
 
-# --- Main Display Area using Tabs ---
+# --- Main Display Area using streamlit-option-menu ---
 tab_titles = [
     "Core Status",
     "Primary Coolant",
@@ -53,21 +54,65 @@ tab_titles = [
     "Plant Health & Resources",
     "Raw Data Viewer"
 ]
-tabs = st.tabs(tab_titles)
+# Icons from: https://icons.getbootstrap.com/
+tab_icons = ['activity', 'droplet-half', 'lightning-charge', 'heart-pulse', 'list-task']
 
-with tabs[0]:
+# Use option_menu for navigation, it persists state automatically
+selected_tab_title = option_menu(
+    menu_title=None,  # Required, but can be None for no title
+    options=tab_titles,  # Required
+    icons=tab_icons,  # Optional
+    menu_icon="cast",  # Optional
+    default_index=0,  # Optional
+    orientation="horizontal",
+    styles={  # UPDATED STYLES for a flatter, underlined look
+        "container": {
+            "padding": "5px 0px",  # Add some vertical padding
+            "background-color": "transparent",  # Keep transparent background
+            "border-bottom": "1px solid #CCCCCC",  # Underline the whole container
+            "margin-bottom": "15px",  # Add space below the menu
+        },
+        "icon": {
+            "color": "#55596A",  # Default icon color (medium grey)
+            "font-size": "18px"
+        },
+        "nav-link": {
+            "font-size": "16px",
+            "font-weight": "normal",  # Normal weight for unselected
+            "text-align": "center",
+            "margin": "0px 5px",  # Add slight horizontal margin
+            "padding": "8px 12px",  # Padding within the link
+            "--hover-color": "#eee",  # Hover background color
+            "border-radius": "0px",  # No rounded corners
+            "border": "none",  # No border
+            "background-color": "transparent",  # No background
+            "color": "#55596A",  # Text color for unselected (medium grey)
+            "border-bottom": "2px solid transparent",  # Placeholder for selected underline
+        },
+        "nav-link-selected": {
+            "background-color": "transparent",  # No background for selected
+            "font-weight": "bold",  # Make selected bold
+            "color": "#007BFF",  # Primary color for selected text (adjust as needed)
+            "border-bottom": "2px solid #007BFF",  # Underline for selected
+            # Icon color might inherit the text color here, if not, specific CSS injection needed
+        },
+    }
+)
+
+# Conditionally display content based on the selected option_menu item
+if selected_tab_title == tab_titles[0]:
     core_status.display_tab()  # Call function from imported module
 
-with tabs[1]:
+elif selected_tab_title == tab_titles[1]:
     primary_coolant.display_tab()  # Call function from imported module
 
-with tabs[2]:
+elif selected_tab_title == tab_titles[2]:
     power_gen.display_tab()  # Call function from imported module
 
-with tabs[3]:
+elif selected_tab_title == tab_titles[3]:
     health.display_tab()  # Call function from imported module
 
-with tabs[4]:
+elif selected_tab_title == tab_titles[4]:
     raw_data.display_tab()  # Call function from imported module
 
 # --- Footer ---

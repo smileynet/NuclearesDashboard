@@ -15,7 +15,7 @@ def display_tab():
     # --- Consolidated Component Health Section ---
     st.subheader("Component Health")
     with st.container(border=True):
-        # Use two columns: one for Core, one for Rods
+        # Use two columns: one for Core, one for Rods - This structure is good for comparison
         col_core, col_rods = st.columns(2)
 
         with col_core:
@@ -25,17 +25,18 @@ def display_tab():
                 title="Integrity",
                 value_var="CORE_INTEGRITY",
                 range_min_input=0, range_max_input=100,
-                op_max_input=70,  # Threshold for color split (higher is better)
+                op_max_input=70,
+                # Threshold for color split (higher is better) - Note: op_max defines RED zone start in default logic
                 unit="%"
             )
-            st.caption("Gauge: Red < 70%, Green >= 70%")
+            st.caption("Gauge: Red < 70%, Green >= 70%")  # Adjust caption based on gauge logic if needed
 
             # --- Core Wear Gauge ---
             utils.display_gauge(
                 title="Wear",
                 value_var="CORE_WEAR",
                 range_min_input=0, range_max_input=100,
-                op_max_input=30,  # Threshold for color split (higher is worse)
+                op_max_input=30,  # Threshold for color split (higher is worse) - Defines start of RED zone
                 unit="%"
             )
             st.caption("Gauge: Green < 30%, Red >= 30%")
@@ -53,7 +54,7 @@ def display_tab():
                 value_var="RODS_TEMPERATURE",
                 range_min_input=0,
                 range_max_input="RODS_MAX_TEMPERATURE",
-                op_max_input=op_max_rod_temp,
+                op_max_input=op_max_rod_temp,  # Defines start of RED zone
                 unit="°C"
             )
             st.caption("Gauge: Green=Normal, Red=High(>80% Max)")
@@ -66,6 +67,7 @@ def display_tab():
     # --- Resources Section ---
     st.subheader("Resources")
     with st.container(border=True):
+        # Use columns to place Fuel Level next to other resource info/charts
         col_fuel, col_wear_info = st.columns(2)
 
         with col_fuel:
@@ -77,7 +79,7 @@ def display_tab():
                 title="Level",
                 value_var=fuel_variable,
                 range_min_input=0, range_max_input=100,
-                op_max_input=15,  # Set threshold for "Low Fuel" (Red below 15%)
+                op_max_input=15,  # Set threshold for "Low Fuel" (Red below 15%) - Defines start of RED zone
                 unit="%"
             )
             st.caption(f"Gauge: Red < 15% (Low), Green >= 15%. Uses placeholder variable: `{fuel_variable}`")
@@ -86,8 +88,7 @@ def display_tab():
             st.markdown("**Other Component Wear**")
             st.info("""
                 A comparative bar chart for wear across multiple components (Pumps, Turbines, etc.)
-                is recommended but requires specific variables for each component's wear level,
-                which are not currently defined in `config.py`.
+                is recommended here but requires specific variables for each component's wear level.
 
                 Core wear is displayed under 'Component Health'.
             """)
@@ -106,11 +107,13 @@ def display_tab():
             # else:
             #     st.caption("Wear data for specific components unavailable.")
 
+
     st.divider()
 
     # --- Time Section ---
     st.subheader("Time")
     with st.container(border=True):
+        # Use columns to place time metrics side-by-side
         col_time1, col_time2 = st.columns(2)
         with col_time1:
             utils.display_metric("Sim Time", "TIME")
@@ -126,4 +129,5 @@ def display_tab():
         * **Energy Demand:** (Variable Needed - *Metric/Chart*)
         * **Chemical Status (Boron, pH, Xenon):** (Variables Needed - *Metrics/Charts*)
         * **AO Status:** (Variables Needed - *Text/Indicators*)
-    """)  # Removed Fuel and Wear from this list
+        * **Alarms:** (Variables Needed - *Log/Indicators*)
+    """)  # Removed Fuel and Wear from this list as they are handled above

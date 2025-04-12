@@ -133,13 +133,11 @@ def display_gauge(title, value_var, range_min_input, range_max_input, op_min_inp
                 threshold_val = range_min + (range_max - range_min) / 2
 
             if "Integrity" in title:  # Higher is better
-                steps = [
-                    {'range': [range_min, threshold_val], 'color': color_bad},
-                    {'range': [threshold_val, range_max], 'color': color_good}]
+                steps = [{'range': [range_min, threshold_val], 'color': color_bad},
+                         {'range': [threshold_val, range_max], 'color': color_good}]
             else:  # Assume higher is worse (Wear, Rod Temp)
-                steps = [
-                    {'range': [range_min, threshold_val], 'color': color_good},
-                    {'range': [threshold_val, range_max], 'color': color_bad}]
+                steps = [{'range': [range_min, threshold_val], 'color': color_good},
+                         {'range': [threshold_val, range_max], 'color': color_bad}]
             # threshold_val is already set
     else:
         # --- Use neutral settings if data is invalid ---
@@ -147,6 +145,7 @@ def display_gauge(title, value_var, range_min_input, range_max_input, op_min_inp
         steps = [{'range': gauge_range, 'color': 'lightgrey'}]  # Single grey step
         threshold_val = gauge_range[1]  # Threshold at max of default range
         bar_color = "grey"  # Grey bar if value is shown
+
 
     # --- Create the Gauge Figure ---
     fig = go.Figure(go.Indicator(
@@ -184,13 +183,19 @@ def display_gauge(title, value_var, range_min_input, range_max_input, op_min_inp
             align="center"
         )
 
+
     fig.update_layout(
         height=210,
         margin=dict(l=20, r=20, t=50, b=10),
         paper_bgcolor='rgba(0,0,0,0)',
         font={'color': "grey", 'family': "Arial"}
     )
-    st.plotly_chart(fig, use_container_width=True)
+
+    # --- Display Plotly Chart with Unique Key ---
+    # Create a unique key based on the variable being displayed
+    chart_key = f"gauge_{value_var}"
+    st.plotly_chart(fig, use_container_width=True, key=chart_key)  # ADDED key argument
+
 
 # Generic progress display
 def display_progress(label, variable_name, max_value=100, help_text=None):
@@ -202,7 +207,6 @@ def display_progress(label, variable_name, max_value=100, help_text=None):
         st.progress(progress_value, text=f"{value:.1f}%" if max_value == 100 else f"{value:.1f}")
     else:
         st.text(f"{label}: N/A ({value})")
-
 
 # Helper for Boolean Status
 def display_boolean_status(label, variable_name):

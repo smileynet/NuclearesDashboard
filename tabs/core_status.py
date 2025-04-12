@@ -1,26 +1,37 @@
 # tabs/core_status.py
+import plotly.express as px  # Import Plotly Express for charts
 import streamlit as st
 
 import utils  # Import helpers from utils.py
 
 
+# --- Main Display Function for the Tab ---
+
 def display_tab():
+    """Displays the content for the Core Status tab."""
     st.header("Reactor Core Status")
     # Use columns for Temp and Pressure gauges side-by-side
     gauge_cols = st.columns(2)
     with gauge_cols[0]:
+        # --- Core Temp Gauge ---
         utils.display_gauge(
-            title="Core Temperature", value_var="CORE_TEMP",
-            range_min_input="CORE_TEMP_MIN", range_max_input="CORE_TEMP_MAX",
-            op_min_input="CORE_TEMP_OPERATIVE", op_max_input="CORE_TEMP_MAX",
+            title="Core Temperature",
+            value_var="CORE_TEMP",
+            range_min_input="CORE_TEMP_MIN",  # Pass var name
+            range_max_input="CORE_TEMP_MAX",  # Pass var name
+            op_min_input="CORE_TEMP_OPERATIVE",  # Pass var name
+            op_max_input="CORE_TEMP_MAX",  # Using CORE_TEMP_MAX as end of operative for gauge coloring
             unit="°C"
         )
     with gauge_cols[1]:
+        # --- Core Pressure Gauge ---
         utils.display_gauge(
-            title="Core Pressure", value_var="CORE_PRESSURE",
-            range_min_input=0, range_max_input="CORE_PRESSURE_MAX",
-            op_max_input="CORE_PRESSURE_OPERATIVE",
-            unit="bar"
+            title="Core Pressure",
+            value_var="CORE_PRESSURE",
+            range_min_input=0,  # Pass number 0 directly
+            range_max_input="CORE_PRESSURE_MAX",  # Pass var name
+            op_max_input="CORE_PRESSURE_OPERATIVE",  # Pass var name
+            unit="bar"  # Assuming bar, adjust if needed
         )
 
     st.divider()
@@ -36,11 +47,31 @@ def display_tab():
         utils.display_metric("Ready for Start?", "CORE_READY_FOR_START")
 
     st.divider()
-    # --- Core Temp History Chart ---
+    # --- Core Temp History Chart (using Plotly) ---
     st.subheader("Core Temperature History")
-    if not st.session_state.core_temp_history.empty:
+    if 'core_temp_history' in st.session_state and not st.session_state.core_temp_history.empty:
+        # Prepare DataFrame (Timestamp likely already index from previous code)
+        # Ensure Timestamp is the index for Plotly Express
         chart_df = st.session_state.core_temp_history.set_index('Timestamp')
-        st.line_chart(chart_df)
+
+        # Create Plotly figure using Plotly Express
+        fig = px.line(
+            chart_df,
+            y='Core Temp (°C)',  # Specify the column for the y-axis
+            # title="Core Temperature Trend" # Title can be omitted if subheader is sufficient
+            labels={'Timestamp': 'Time'}  # Optional: Rename axes
+        )
+
+        # --- Disable Zooming ---
+        # Set fixedrange to True for both axes to disable zoom
+        fig.update_layout(
+            xaxis={"fixedrange": True},
+            yaxis={"fixedrange": True},
+            height=300  # Optional: Adjust height
+        )
+
+        # Display using st.plotly_chart
+        st.plotly_chart(fig, use_container_width=True)
     else:
         st.caption("Collecting temperature data for chart...")
     st.divider()
@@ -57,8 +88,9 @@ def display_tab():
     with cols_rods[2]:
         utils.display_metric("Rods Movement Speed", "RODS_MOVEMENT_SPEED")
         utils.display_metric("Rods Temp (°C)", "RODS_TEMPERATURE")
-        st.caption(
-            f"Max Temp: {utils.fetch_variable_value('RODS_MAX_TEMPERATURE')}")  # Fetch directly if needed only here
+        # Fetch max temp directly if needed only here for caption
+        st.caption(f"Max Temp: {utils.fetch_variable_value('RODS_MAX_TEMPERATURE')}")
     with cols_rods[3]:
         utils.display_metric("Rods Aligned?", "RODS_ALIGNED")
         utils.display_metric("Rods Deformed?", "RODS_DEFORMED")
+

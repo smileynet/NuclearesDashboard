@@ -10,11 +10,15 @@ from streamlit_option_menu import option_menu  # Import option_menu
 import config
 import utils  # Although fetch might be called implicitly via helpers
 # Import tab display functions
-from tabs import core_status, primary_coolant, power_gen, health, raw_data
+from tabs import overview, core_status, primary_coolant, power_gen, health, raw_data
 
 # --- Initialize Session State ---
+# Initialize Core Temp History
 if 'core_temp_history' not in st.session_state:
     st.session_state.core_temp_history = pd.DataFrame(columns=['Timestamp', 'Core Temp (°C)'])
+# Initialize Total KW History << NEW
+if 'total_kw_history' not in st.session_state:
+    st.session_state.total_kw_history = pd.DataFrame(columns=['Timestamp', 'Total Output (kW)'])
 # Add other history initializations here if needed
 
 # --- Streamlit App Layout ---
@@ -35,85 +39,83 @@ st.sidebar.caption("Ensure the simulation's webserver is active.")
 if auto_refresh_on:
     st_autorefresh(interval=refresh_interval * 1000, key="data_refresher")
 
-# --- Data Update Logic for History ---
-# (Keep this logic in main.py as it updates session_state)
-current_core_temp = utils.fetch_variable_value("CORE_TEMP")  # Use utils function
-current_time = datetime.datetime.now()
+# --- Data Update Logic for History & Calculations ---
+current_time = datetime.datetime.now()  # Get current time once
+
+# Calculate Total Power
+total_kw = 0.0
+active_generators = 0
+for i in range(3):
+    kw_value = utils.fetch_variable_value(f"GENERATOR_{i}_KW")
+    if isinstance(kw_value, float):
+        breaker_val = utils.fetch_variable_value(f"GENERATOR_{i}_BREAKER")
+        # Count power only if breaker is closed (False)
+        if isinstance(breaker_val, bool) and not breaker_val:
+            total_kw += kw_value
+            if kw_value > 0:  # Count as active if producing power AND connected
+                active_generators += 1
+
+# Update Total KW History << NEW
+new_kw_data = pd.DataFrame({'Timestamp': [current_time], 'Total Output (kW)': [total_kw]})
+st.session_state.total_kw_history = pd.concat([st.session_state.total_kw_history, new_kw_data], ignore_index=True)
+if len(st.session_state.total_kw_history) > config.MAX_HISTORY_POINTS:
+    st.session_state.total_kw_history = st.session_state.total_kw_history.tail(config.MAX_HISTORY_POINTS)
+
+# Update Core Temp History
+current_core_temp = utils.fetch_variable_value("CORE_TEMP")
 if isinstance(current_core_temp, (int, float)):
-    new_data = pd.DataFrame({'Timestamp': [current_time], 'Core Temp (°C)': [current_core_temp]})
-    st.session_state.core_temp_history = pd.concat([st.session_state.core_temp_history, new_data], ignore_index=True)
+    new_temp_data = pd.DataFrame({'Timestamp': [current_time], 'Core Temp (°C)': [current_core_temp]})
+    st.session_state.core_temp_history = pd.concat([st.session_state.core_temp_history, new_temp_data],
+                                                   ignore_index=True)
     if len(st.session_state.core_temp_history) > config.MAX_HISTORY_POINTS:
         st.session_state.core_temp_history = st.session_state.core_temp_history.tail(config.MAX_HISTORY_POINTS)
 # Add update logic for other history data here
 
 # --- Main Display Area using streamlit-option-menu ---
 tab_titles = [
+    "Overview",
     "Core Status",
     "Primary Coolant",
     "Steam & Power Gen",
     "Plant Health & Resources",
     "Raw Data Viewer"
 ]
-# Icons from: https://icons.getbootstrap.com/
-tab_icons = ['activity', 'droplet-half', 'lightning-charge', 'heart-pulse', 'list-task']
+tab_icons = ['house', 'activity', 'droplet-half', 'lightning-charge', 'heart-pulse', 'list-task']
 
-# Use option_menu for navigation, it persists state automatically
 selected_tab_title = option_menu(
-    menu_title=None,  # Required, but can be None for no title
-    options=tab_titles,  # Required
-    icons=tab_icons,  # Optional
-    menu_icon="cast",  # Optional
-    default_index=0,  # Optional
-    orientation="horizontal",
-    styles={  # UPDATED STYLES for a flatter, underlined look
-        "container": {
-            "padding": "5px 0px",  # Add some vertical padding
-            "background-color": "transparent",  # Keep transparent background
-            "border-bottom": "1px solid #CCCCCC",  # Underline the whole container
-            "margin-bottom": "15px",  # Add space below the menu
-        },
-        "icon": {
-            "color": "#55596A",  # Default icon color (medium grey)
-            "font-size": "18px"
-        },
-        "nav-link": {
-            "font-size": "16px",
-            "font-weight": "normal",  # Normal weight for unselected
-            "text-align": "center",
-            "margin": "0px 5px",  # Add slight horizontal margin
-            "padding": "8px 12px",  # Padding within the link
-            "--hover-color": "#eee",  # Hover background color
-            "border-radius": "0px",  # No rounded corners
-            "border": "none",  # No border
-            "background-color": "transparent",  # No background
-            "color": "#55596A",  # Text color for unselected (medium grey)
-            "border-bottom": "2px solid transparent",  # Placeholder for selected underline
-        },
-        "nav-link-selected": {
-            "background-color": "transparent",  # No background for selected
-            "font-weight": "bold",  # Make selected bold
-            "color": "#007BFF",  # Primary color for selected text (adjust as needed)
-            "border-bottom": "2px solid #007BFF",  # Underline for selected
-            # Icon color might inherit the text color here, if not, specific CSS injection needed
-        },
+    menu_title=None, options=tab_titles, icons=tab_icons, menu_icon="cast",
+    default_index=0, orientation="horizontal",
+    styles={
+        "container": {"padding": "5px 0px", "background-color": "transparent", "border-bottom": "1px solid #CCCCCC",
+                      "margin-bottom": "15px"},
+        "icon": {"color": "#55596A", "font-size": "18px"},
+        "nav-link": {"font-size": "16px", "font-weight": "normal", "text-align": "center", "margin": "0px 5px",
+                     "padding": "8px 12px", "--hover-color": "#eee", "border-radius": "0px", "border": "none",
+                     "background-color": "transparent", "color": "#55596A", "border-bottom": "2px solid transparent"},
+        "nav-link-selected": {"background-color": "transparent", "font-weight": "bold", "color": "#007BFF",
+                              "border-bottom": "2px solid #007BFF"},
     }
 )
 
+
 # Conditionally display content based on the selected option_menu item
-if selected_tab_title == tab_titles[0]:
-    core_status.display_tab()  # Call function from imported module
+if selected_tab_title == "Overview":
+    overview.display_tab(total_kw=total_kw)  # Pass calculated total_kw
 
-elif selected_tab_title == tab_titles[1]:
-    primary_coolant.display_tab()  # Call function from imported module
+elif selected_tab_title == "Core Status":
+    core_status.display_tab()
 
-elif selected_tab_title == tab_titles[2]:
-    power_gen.display_tab()  # Call function from imported module
+elif selected_tab_title == "Primary Coolant":
+    primary_coolant.display_tab()
 
-elif selected_tab_title == tab_titles[3]:
-    health.display_tab()  # Call function from imported module
+elif selected_tab_title == "Steam & Power Gen":
+    power_gen.display_tab()  # Could pass total_kw and active_generators here too if needed
 
-elif selected_tab_title == tab_titles[4]:
-    raw_data.display_tab()  # Call function from imported module
+elif selected_tab_title == "Plant Health & Resources":
+    health.display_tab()
+
+elif selected_tab_title == "Raw Data Viewer":
+    raw_data.display_tab()
 
 # --- Footer ---
 # st.markdown("---")

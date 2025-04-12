@@ -41,7 +41,6 @@ def fetch_variable_value(variable_name):
         value = f"Error: {e}"
     return value
 
-
 # Generic metric display - UPDATED WITH DELTA LOGIC & FONT SIZE ADJUSTMENT
 def display_metric(label, variable_name, help_text=None, delta_color="normal"):
     """
@@ -331,3 +330,64 @@ def display_boolean_status(label, variable_name):
         {status_text}
     </div>
     """, unsafe_allow_html=True)
+
+
+# --- NEW: Custom Component Health Indicator ---
+def display_component_health_indicator(label, wear_var, integrity_var=None):
+    """
+    Displays a custom indicator for component health using icons, progress bars, and metrics.
+    """
+    wear_value = fetch_variable_value(wear_var)
+    integrity_value = fetch_variable_value(integrity_var) if integrity_var else None
+
+    # Determine status icon based on wear and integrity
+    status_icon = "✅"  # Default: Good
+    wear_percent = 0.0
+    integrity_percent = 100.0  # Assume 100% if not provided or invalid
+
+    if isinstance(wear_value, (int, float)):
+        wear_percent = float(wear_value)
+        if wear_percent > 75:
+            status_icon = "❌"  # Critical wear
+        elif wear_percent > 50:
+            status_icon = "⚠️"  # Moderate wear
+    elif isinstance(wear_value, str) and "Error" in wear_value:
+        status_icon = "❓"  # Unknown status due to error
+
+    if isinstance(integrity_value, (int, float)):
+        integrity_percent = float(integrity_value)
+        if integrity_percent < 30:
+            status_icon = "❌"  # Critical integrity loss
+        elif integrity_percent < 60 and status_icon != "❌":  # Don't override critical wear status
+            status_icon = "⚠️"  # Moderate integrity loss
+    elif isinstance(integrity_value, str) and "Error" in integrity_value and status_icon != "❌":
+        status_icon = "❓"  # Unknown status due to error
+
+    # Display using container and markdown/progress/metric
+    with st.container(border=True):
+        # Header with Label and Status Icon
+        st.markdown(f"""
+        <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+            <span style="font-weight: bold; font-size: 1.1rem; margin-right: 8px;">{label}</span>
+            <span style="font-size: 1.5em;">{status_icon}</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Display Wear Progress Bar
+        if isinstance(wear_value, (int, float)):
+            wear_progress_val = max(0.0, min(wear_percent, 100.0)) / 100.0
+            st.progress(wear_progress_val, text=f"Wear: {wear_percent:.1f}%")
+        else:
+            st.progress(0.0, text=f"Wear: N/A ({wear_value})")
+
+        # Display Integrity Metric (if applicable)
+        if integrity_var:
+            if isinstance(integrity_value, (int, float)):
+                # Use a smaller text display instead of full metric for compactness
+                st.markdown(f"**Integrity:** {integrity_percent:.1f}%")
+                # Or use display_metric if you prefer that style:
+                # display_metric("Integrity", integrity_var) # This will apply default metric styling
+            else:
+                st.markdown(f"**Integrity:** N/A ({integrity_value})")
+
+# --- END NEW FUNCTION ---
